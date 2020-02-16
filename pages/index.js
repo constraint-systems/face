@@ -102,6 +102,13 @@ function tReducer(state, action) {
     case 'set_end_marker': {
       return { text: state.text, marker: [state.marker[0], action.payload] }
     }
+    case 'layout': {
+      let text_layout = layoutText(
+        action.col_num,
+        state.text.map(o => o[0]).join('')
+      )
+      return { text: text_layout, marker: state.marker }
+    }
     case 'move_marker':
       {
         let new_marker = state.marker
@@ -145,6 +152,8 @@ let short_text = `CHAPTER 1. Loomings.
 
 Call me Ishmael. Some years ago—never mind how long precisely—having little or no money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little and see the watery part of the world.`
 
+short_text = `You see people, and you're disconnected from them, they mean nothing to you, but other times you can invest everything in someone you don't even know, silently believe in them, it might be on the underground or in a shop or something. You hope people are doing that with you as well. Some people, even when they're quite young, and they're in difficulty, maybe taking a battering in their life, but they still handle themselves with grace. I hope most people can be like that, hold it together, I wanted this album to be for people in that situation.`
+
 let initialt = {
   text: layoutText(50, short_text),
   marker: [short_text.length, short_text.length],
@@ -185,6 +194,8 @@ const Home = () => {
   let km_ref = useRef({})
 
   let flref = useRef(null)
+  let clref = useRef(null)
+  let tlref = useRef(null)
 
   let [textClicked, setTextClicked] = useState(false)
 
@@ -243,6 +254,7 @@ const Home = () => {
       function getXY(i) {
         return [i % base_col, Math.floor(i / base_col)]
       }
+
       let fl = flref.current
       let flx = fl.getContext('2d')
       let fl_content = 'font'
@@ -252,17 +264,35 @@ const Home = () => {
         let [sprite_x, sprite_y] = getXY(key)
         flx.drawImage(
           ui_ref.current,
-          (sprite_x * cw) / scale,
-          (sprite_y * ch) / scale,
+          sprite_x * (cw / scale),
+          sprite_y * (ch / scale),
           cw / scale,
           ch / scale,
-          (i * cw) / scale,
-          (0 * ch) / scale,
+          i * (cw / scale),
+          0 * (ch / scale),
           cw / scale,
           ch / scale
         )
       }
-
+      let cl = clref.current
+      let clx = cl.getContext('2d')
+      let cl_content = 'char'
+      for (let i = 0; i < cl_content.length; i++) {
+        let key = cl_content.charCodeAt(i) - 32
+        if (key === -22) key = 1
+        let [sprite_x, sprite_y] = getXY(key)
+        clx.drawImage(
+          ui_ref.current,
+          sprite_x * (cw / scale),
+          sprite_y * (ch / scale),
+          cw / scale,
+          ch / scale,
+          i * (cw / scale),
+          0 * (ch / scale),
+          cw / scale,
+          ch / scale
+        )
+      }
       setCanvasLoaded(true)
     }
     base_img.src = base
@@ -284,7 +314,7 @@ const Home = () => {
       drawMarker()
       drawAlphabetMarker()
     }
-  }, [mode, tstate.text, tstate.marker, amark])
+  }, [mode, tstate.text, tstate.marker, amark, col_num])
 
   useEffect(() => {
     if (canvas_loaded) {
@@ -296,7 +326,7 @@ const Home = () => {
     if (canvas_loaded) {
       drawText()
     }
-  }, [tstate.text])
+  }, [tstate.text, col_num])
 
   function drawAlphabetMarker() {
     let am = amref.current
@@ -403,8 +433,16 @@ const Home = () => {
 
   function drawMarker() {
     let m = mref.current
+
     let mx = m.getContext('2d')
 
+    let char = getLast(
+      tstate.text,
+      Math.max(...tstate.marker, tstate.text.length - 1)
+    )
+
+    m.width = cw * (col_num + 3)
+    m.height = char[2] * ch + ch + ch
     mx.clearRect(0, 0, m.width, m.height)
 
     mx.fillStyle = 'white'
@@ -438,30 +476,30 @@ const Home = () => {
         // same row
         if (y0 === y1) {
           mx.fillRect(
-            (x0 * cw + cw + cw / 2) * scale,
-            (y0 * ch + ch / 2) * scale,
-            (x1 - x0) * cw * scale,
-            ch * scale
+            x0 * cw + cw + cw / 2,
+            y0 * ch + ch / 2,
+            (x1 - x0) * cw,
+            ch
           )
         } else {
           // first_row
           let frow = tstate.text.filter(o => o[2] === y0)
           let last_frow = frow[frow.length - 1]
           mx.fillRect(
-            (x0 * cw + cw + cw / 2) * scale,
-            (y0 * ch + ch / 2) * scale,
-            (last_frow[1] - x0 + 1) * cw * scale,
-            ch * scale
+            x0 * cw + cw + cw / 2,
+            y0 * ch + ch / 2,
+            (last_frow[1] - x0 + 1) * cw,
+            ch
           )
 
           if (y1 - y0 > 1) {
             for (let i = y0 + 1; i < y1; i++) {
               let row = tstate.text.filter(o => o[2] === i)
               mx.fillRect(
-                (0 * cw + cw + cw / 2) * scale,
-                (i * ch + ch / 2) * scale,
-                (row[row.length - 1][1] + 1) * cw * scale,
-                ch * scale
+                0 * cw + cw + cw / 2,
+                i * ch + ch / 2,
+                (row[row.length - 1][1] + 1) * cw,
+                ch
               )
             }
           }
@@ -469,12 +507,7 @@ const Home = () => {
           // last_row
           let lrow = tstate.text.filter(o => o[2] === y1)
           let last_lrow = lrow[lrow.length - 1]
-          mx.fillRect(
-            (0 * cw + cw + cw / 2) * scale,
-            (y1 * ch + ch / 2) * scale,
-            x1 * cw * scale,
-            ch * scale
-          )
+          mx.fillRect(0 * cw + cw + cw / 2, y1 * ch + ch / 2, x1 * cw, ch)
         }
       }
     }
@@ -483,8 +516,36 @@ const Home = () => {
   function drawText() {
     let t = tref.current
     let tx = t.getContext('2d')
-
     let text = tstate.text
+
+    let char = getLast(tstate.text, Math.max(...tstate.marker))
+    t.width = cw * (col_num + 2)
+    t.height = char[2] * ch + ch + ch
+
+    // text label
+    function getXY(i) {
+      return [i % base_col, Math.floor(i / base_col)]
+    }
+    let tl = tlref.current
+    let tlx = tl.getContext('2d')
+    tlx.clearRect(0, 0, tl.width, tl.height)
+    let tl_content = 'text ' + col_num + 'x' + (char[2] + 1)
+    for (let i = 0; i < tl_content.length; i++) {
+      let key = tl_content.charCodeAt(i) - 32
+      if (key === -22) key = 1
+      let [sprite_x, sprite_y] = getXY(key)
+      tlx.drawImage(
+        ui_ref.current,
+        sprite_x * (cw / scale),
+        sprite_y * (ch / scale),
+        cw / scale,
+        ch / scale,
+        i * (cw / scale),
+        0 * (ch / scale),
+        cw / scale,
+        ch / scale
+      )
+    }
 
     tx.clearRect(0, 0, t.width, t.height)
 
@@ -517,18 +578,19 @@ const Home = () => {
     let ctrl = event.ctrlKey
     let meta = event.metaKey
 
-    // if (mode != 'font') {
-    //     if (key == '1') {
-    //       setScale(1)
-    //     setCw(1)
-    //     setCh(1)
-    //   }
-    //   if (key == '1') {
-    //     setScale(1)
-    //     setCw(1)
-    //     setCh(1)
-    //   }
-    // }
+    if (mode === 'text') {
+      if (ctrl && key === 'h') {
+        let new_col = col_num - 1
+        setColNum(new_col)
+        tdispatch({ type: 'layout', col_num: new_col })
+        event.preventDefault()
+      } else if (ctrl && key === 'l') {
+        let new_col = col_num + 1
+        setColNum(new_col)
+        tdispatch({ type: 'layout', col_num: new_col })
+        event.preventDefault()
+      }
+    }
 
     // shift = true
     if (!ctrl && !meta) {
@@ -785,6 +847,9 @@ const Home = () => {
     }
   }, [mode, col_num, tstate, amark, cmark])
 
+  let scw = cw / scale
+  let sch = ch / scale
+
   return (
     <div>
       <Head>
@@ -792,30 +857,22 @@ const Home = () => {
       </Head>
 
       <Topstrip
-        cw={cw / scale}
-        ch={ch / scale}
+        cw={scw}
+        ch={sch}
         base={ui_ref.current}
         canvas_loaded={canvas_loaded}
         mode={mode}
       />
 
-      <div style={{ display: 'flex' }}>
+      <div style={{ display: 'flex', marginTop: sch / 2 }}>
         <div
           style={{
             position: 'relative',
-            marginLeft: cw,
-            marginTop: ch / 2,
-            marginRight: cw,
+            marginLeft: scw,
+            marginRight: scw,
           }}
         >
-          <canvas
-            style={{
-              width: 'font'.length * cw,
-              height: ch,
-            }}
-            ref={flref}
-          />
-
+          <canvas width={'font'.length * scw} height={sch} ref={flref} />
           <div style={{ position: 'relative' }}>
             <canvas
               style={{
@@ -834,44 +891,68 @@ const Home = () => {
             />
           </div>
         </div>
-        <div style={{ position: 'relative', marginTop: ch / 2 }}>
-          <canvas
-            ref={cref}
-            style={{
-              position: 'relative',
-              outline: mode === 'char' ? 'solid 1px black' : 'none',
-            }}
-          />
-          <canvas
-            style={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
-            }}
-            ref={cmref}
-          />
+        <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative' }}>
+            <canvas
+              width={'char'.length * scw}
+              height={ch / scale}
+              ref={clref}
+            />
+          </div>
+          <div style={{ position: 'relative' }}>
+            <canvas
+              ref={cref}
+              style={{
+                position: 'relative',
+                outline: mode === 'char' ? 'solid 1px black' : 'none',
+              }}
+            />
+            <canvas
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+              }}
+              ref={cmref}
+            />
+          </div>
         </div>
       </div>
 
-      <div style={{ position: 'relative', marginLeft: cw, marginTop: ch / 2 }}>
-        <canvas
-          style={{
-            position: 'absolute',
-            left: -cw / 2,
-            top: 0,
-          }}
-          ref={mref}
-        />
-        <canvas
-          style={{
-            position: 'relative',
-            outline: mode === 'text' ? 'solid 1px black' : 'none',
-          }}
-          onMouseDown={textDown}
-          onMouseUp={textUp}
-          onMouseMove={textMove}
-          ref={tref}
-        />
+      <div
+        style={{
+          position: 'relative',
+          marginLeft: scw,
+          marginBottom: sch / 2,
+        }}
+      >
+        <div style={{ position: 'relative' }}>
+          <canvas
+            width={('text 100x100'.length * cw) / scale}
+            height={sch}
+            ref={tlref}
+          />
+        </div>
+        <div style={{ position: 'relative' }}>
+          <canvas
+            style={{
+              position: 'absolute',
+              left: -cw / 2,
+              top: 0,
+            }}
+            ref={mref}
+          />
+          <canvas
+            style={{
+              position: 'relative',
+              outline: mode === 'text' ? 'solid 1px black' : 'none',
+            }}
+            onMouseDown={textDown}
+            onMouseUp={textUp}
+            onMouseMove={textMove}
+            ref={tref}
+          />
+        </div>
       </div>
 
       <style global jsx>{`

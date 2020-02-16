@@ -3,7 +3,6 @@ export function layoutText(cols, text_string) {
   let x = 0
   let y = 0
   let lines = text_string.split('\n')
-  console.log(cols)
   let line_words = lines.map((l, i) => {
     let unbroke_words = l.split(' ')
     let words = []

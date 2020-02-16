@@ -81,6 +81,8 @@ let char_active = [
 ]
 let text_active = [
   { type: 'button', key: 'Escape', key_label: 'Esc', label: 'edit font' },
+  { type: 'button', key: 'h', key_label: 'Ctrl+h', label: 'columns-1' },
+  { type: 'button', key: 'h', key_label: 'Ctrl+l', label: 'columns+1' },
 ]
 let font_active = [
   { type: 'button', key: 'h', key_label: 'h', label: 'left' },
