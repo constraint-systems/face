@@ -6,10 +6,9 @@ import React, {
   useReducer,
 } from 'react'
 import Head from 'next/head'
-import { base, layoutText } from '../components/constants'
+import { base, base2, layoutText } from '../components/constants'
 import Topstrip from '../components/topstrip'
-
-let base_col = 80
+import Bottomstrip from '../components/bottomstrip'
 
 function getLast(text, index) {
   let char = text[index]
@@ -154,14 +153,16 @@ Call me Ishmael. Some years ago—never mind how long precisely—having little 
 
 short_text = `You see people, and you're disconnected from them, they mean nothing to you, but other times you can invest everything in someone you don't even know, silently believe in them, it might be on the underground or in a shop or something. You hope people are doing that with you as well. Some people, even when they're quite young, and they're in difficulty, maybe taking a battering in their life, but they still handle themselves with grace. I hope most people can be like that, hold it together, I wanted this album to be for people in that situation.`
 
+short_text = `Face lets you edit both the text and the font it is rendered in. In text mode you can type and edit text normally. Press escape to enter font mode, where you can select a character to edit. After navigating to a character, press enter to edit the character itself. Any changes to a character are visible immediately. Use the controls listed at the bottom to change zoom level, save the text as an image, and save or load a font. The base font used is a subset of GNU Unifont.`
+
 let initialt = {
   text: layoutText(50, short_text),
   marker: [short_text.length, short_text.length],
 }
 
-let acel_num = 94
-let acol_num = 24
-let arow_num = Math.ceil(acel_num / acol_num)
+let acel_num = 95
+let acols = 12
+let arows = Math.ceil(acel_num / acols)
 
 let magnify = 8
 
@@ -201,102 +202,140 @@ const Home = () => {
 
   let [tstate, tdispatch] = useReducer(tReducer, initialt)
 
-  // init
-  useEffect(() => {
-    // text
-    let t = tref.current
-    t.width = cw * (col_num + 2)
-    t.height = ch * (row_num + 1)
+  let [refresh, setRefresh] = useState(0)
 
-    // text marker
-    let m = mref.current
-    m.width = cw * (col_num + 3)
-    m.height = ch * (row_num + 1)
-
-    // alphabet
-    let a = aref.current
-    a.width = cw * acol_num
-    a.height = ch * arow_num
-
-    // alphabet marker
-    let am = amref.current
-    am.width = cw * acol_num
-    am.height = ch * arow_num
-
-    // character
-    let c = cref.current
-    c.width = cw * magnify
-    c.height = ch * magnify
-
-    // character marker
-    let cm = cmref.current
-    cm.width = c.width
-    cm.height = c.height
-
-    let $base = document.createElement('canvas')
-    $base.width = base_col * cw
-    $base.height = 2 * ch
-    let $basex = $base.getContext('2d')
-    $basex.imageSmoothingEnabled = false
+  function loadImage(src) {
+    let base = base_ref.current
+    let basex = base.getContext('2d')
     let base_img = document.createElement('img')
     base_img.onload = () => {
-      $basex.drawImage(base_img, 0, 0, $base.width, $base.height)
-      base_ref.current = $base
-
-      let $ui = document.createElement('canvas')
-      $ui.width = (base_col * cw) / scale
-      $ui.height = (2 * ch) / scale
-      let $uix = $ui.getContext('2d')
-      $uix.imageSmoothingEnabled = false
-      $uix.drawImage(base_img, 0, 0, $ui.width, $ui.height)
-      ui_ref.current = $ui
-
-      function getXY(i) {
-        return [i % base_col, Math.floor(i / base_col)]
-      }
-
-      let fl = flref.current
-      let flx = fl.getContext('2d')
-      let fl_content = 'font'
-      for (let i = 0; i < fl_content.length; i++) {
-        let key = fl_content.charCodeAt(i) - 32
-        if (key === -22) key = 1
-        let [sprite_x, sprite_y] = getXY(key)
-        flx.drawImage(
-          ui_ref.current,
-          sprite_x * (cw / scale),
-          sprite_y * (ch / scale),
-          cw / scale,
-          ch / scale,
-          i * (cw / scale),
-          0 * (ch / scale),
-          cw / scale,
-          ch / scale
-        )
-      }
-      let cl = clref.current
-      let clx = cl.getContext('2d')
-      let cl_content = 'char'
-      for (let i = 0; i < cl_content.length; i++) {
-        let key = cl_content.charCodeAt(i) - 32
-        if (key === -22) key = 1
-        let [sprite_x, sprite_y] = getXY(key)
-        clx.drawImage(
-          ui_ref.current,
-          sprite_x * (cw / scale),
-          sprite_y * (ch / scale),
-          cw / scale,
-          ch / scale,
-          i * (cw / scale),
-          0 * (ch / scale),
-          cw / scale,
-          ch / scale
-        )
-      }
-      setCanvasLoaded(true)
+      basex.clearRect(0, 0, base.width, base.height)
+      basex.fillStyle = 'white'
+      basex.fillRect(0, 0, base.width, base.height)
+      basex.drawImage(base_img, 0, 0, base.width, base.height)
+      drawAlphabet()
+      drawText()
+      drawChar()
     }
-    base_img.src = base
-  }, [])
+    base_img.src = src
+  }
+
+  // init
+  useEffect(() => {
+    if (
+      (cw === 8 && ch === 16 && scale === 1) ||
+      (cw === 16 && ch === 32 && scale === 2)
+    ) {
+      // text
+      let t = tref.current
+      t.width = cw * (col_num + 2)
+      t.height = ch * (row_num + 1)
+
+      // text marker
+      let m = mref.current
+      m.width = cw * (col_num + 3)
+      m.height = ch * (row_num + 1)
+
+      // alphabet
+      let a = aref.current
+      a.width = cw * acols
+      a.height = ch * arows
+
+      // alphabet marker
+      let am = amref.current
+      am.width = cw * acols
+      am.height = ch * arows
+
+      // character
+      let c = cref.current
+      c.width = cw * magnify
+      c.height = ch * magnify
+
+      // character marker
+      let cm = cmref.current
+      cm.width = c.width
+      cm.height = c.height
+
+      let $base = document.createElement('canvas')
+      $base.width = acols * cw
+      $base.height = arows * ch
+      let $basex = $base.getContext('2d')
+      $basex.imageSmoothingEnabled = false
+      let base_img = document.createElement('img')
+      base_img.onload = () => {
+        $basex.fillStyle = 'white'
+        $basex.fillRect(0, 0, $base.width, $base.height)
+        $basex.drawImage(base_img, 0, 0, $base.width, $base.height)
+        base_ref.current = $base
+
+        let $ui = document.createElement('canvas')
+        $ui.width = (acols * cw) / scale
+        $ui.height = (arows * ch) / scale
+        let $uix = $ui.getContext('2d')
+        $uix.imageSmoothingEnabled = false
+        $uix.drawImage(base_img, 0, 0, $ui.width, $ui.height)
+        ui_ref.current = $ui
+
+        function getXY(i) {
+          return [i % acols, Math.floor(i / acols)]
+        }
+
+        let fl = flref.current
+        let flx = fl.getContext('2d')
+        let fl_content = 'font'
+        flx.globalCompositeOperation = 'source-over'
+        flx.fillStyle = '#efefef'
+        flx.fillRect(0, 0, fl.width, fl.height)
+        flx.globalCompositeOperation = 'darken'
+        for (let i = 0; i < fl_content.length; i++) {
+          let key = fl_content.charCodeAt(i) - 32
+          if (key === -22) key = 94
+          let [sprite_x, sprite_y] = getXY(key)
+          flx.drawImage(
+            ui_ref.current,
+            sprite_x * (cw / scale),
+            sprite_y * (ch / scale),
+            cw / scale,
+            ch / scale,
+            i * (cw / scale),
+            0 * (ch / scale),
+            cw / scale,
+            ch / scale
+          )
+        }
+        let cl = clref.current
+        let clx = cl.getContext('2d')
+        let cl_content = 'char'
+        clx.globalCompositeOperation = 'source-over'
+        clx.fillStyle = '#efefef'
+        clx.fillRect(0, 0, fl.width, fl.height)
+        clx.globalCompositeOperation = 'darken'
+        for (let i = 0; i < cl_content.length; i++) {
+          let key = cl_content.charCodeAt(i) - 32
+          if (key === -22) key = 94
+          let [sprite_x, sprite_y] = getXY(key)
+          clx.drawImage(
+            ui_ref.current,
+            sprite_x * (cw / scale),
+            sprite_y * (ch / scale),
+            cw / scale,
+            ch / scale,
+            i * (cw / scale),
+            0 * (ch / scale),
+            cw / scale,
+            ch / scale
+          )
+        }
+        setCanvasLoaded(true)
+      }
+      base_img.src = base2
+    }
+  }, [refresh])
+
+  useEffect(() => {
+    setCanvasLoaded(false)
+    setRefresh(prev => prev + 1)
+  }, [cw, ch, scale])
 
   // init after canvas loaded
   useEffect(() => {
@@ -332,14 +371,17 @@ const Home = () => {
     let am = amref.current
     let amx = am.getContext('2d')
 
-    amx.fillStyle = 'white'
-    amx.fillRect(0, 0, am.width, am.height)
+    amx.clearRect(0, 0, am.width, am.height)
 
-    amx.fillStyle = 'red'
+    // amx.fillStyle = 'black'
+    // amx.fillRect(0, 0, am.width, am.height)
+
     function getXY(i) {
-      return [i % acol_num, Math.floor(i / acol_num)]
+      return [i % acols, Math.floor(i / acols)]
     }
     let [x, y] = getXY(amark)
+    amx.fillStyle = '#fff'
+    amx.lineWidth = scale
     if (mode === 'font') {
       amx.fillRect(x * cw, y * ch, cw, ch)
     }
@@ -350,32 +392,7 @@ const Home = () => {
     let ax = a.getContext('2d')
 
     ax.clearRect(0, 0, a.width, a.height)
-
-    let x = 0
-    let y = 0
-
-    for (let i = 0; i < acel_num; i++) {
-      let key = i
-      let sprite_x = key % base_col
-      let sprite_y = Math.floor(key / base_col)
-      ax.drawImage(
-        base_ref.current,
-        sprite_x * cw,
-        sprite_y * ch,
-        cw,
-        ch,
-        x * cw,
-        y * ch,
-        cw,
-        ch
-      )
-      if (x === acol_num - 1) {
-        x = 0
-        y += 1
-      } else {
-        x += 1
-      }
-    }
+    ax.drawImage(base_ref.current, 0, 0)
   }
 
   function drawChar() {
@@ -384,7 +401,7 @@ const Home = () => {
 
     cmx.clearRect(0, 0, cm.width, cm.height)
     if (mode === 'char') {
-      cmx.fillStyle = 'red'
+      cmx.fillStyle = 'green'
       cmx.fillRect(
         cmark[0] * magnify,
         cmark[1] * magnify,
@@ -415,7 +432,7 @@ const Home = () => {
     }
 
     function getXY(i) {
-      return [i % base_col, Math.floor(i / base_col)]
+      return [i % acols, Math.floor(i / acols)]
     }
     let [sprite_x, sprite_y] = getXY(amark)
     cx.drawImage(
@@ -524,15 +541,19 @@ const Home = () => {
 
     // text label
     function getXY(i) {
-      return [i % base_col, Math.floor(i / base_col)]
+      return [i % acols, Math.floor(i / acols)]
     }
     let tl = tlref.current
     let tlx = tl.getContext('2d')
     tlx.clearRect(0, 0, tl.width, tl.height)
+    tlx.globalCompositeOperation = 'source-over'
+    tlx.fillStyle = '#efefef'
+    tlx.fillRect(0, 0, tl.width, tl.height)
+    tlx.globalCompositeOperation = 'darken'
     let tl_content = 'text ' + col_num + 'x' + (char[2] + 1)
     for (let i = 0; i < tl_content.length; i++) {
       let key = tl_content.charCodeAt(i) - 32
-      if (key === -22) key = 1
+      if (key === -22) key = 94
       let [sprite_x, sprite_y] = getXY(key)
       tlx.drawImage(
         ui_ref.current,
@@ -554,9 +575,9 @@ const Home = () => {
       let x = item[1]
       let y = item[2]
       let key = item[0].charCodeAt(0) - 32
-      if (key === -22) key = 1
-      let sprite_x = key % base_col
-      let sprite_y = Math.floor(key / base_col)
+      if (key === -22) key = 94
+      let sprite_x = key % acols
+      let sprite_y = Math.floor(key / acols)
       tx.drawImage(
         base_ref.current,
         sprite_x * cw,
@@ -577,6 +598,92 @@ const Home = () => {
     let shift = event.shiftKey
     let ctrl = event.ctrlKey
     let meta = event.metaKey
+
+    if (ctrl && key == 1) {
+      setScale(1)
+      setCw(8)
+      setCh(16)
+      event.preventDefault()
+    } else if (ctrl && key == 2) {
+      setScale(2)
+      setCw(16)
+      setCh(32)
+      event.preventDefault()
+    } else if (ctrl && key === 's') {
+      let link = document.createElement('a')
+
+      let t = tref.current
+      let temp = document.createElement('canvas')
+      temp.width = t.width
+      temp.height = t.height
+
+      let tempx = temp.getContext('2d')
+      tempx.fillStyle = 'white'
+      tempx.fillRect(0, 0, t.width, t.height)
+      tempx.drawImage(t, 0, 0)
+
+      temp.toBlob(function(blob) {
+        link.setAttribute('download', 'test.png')
+        link.setAttribute('href', URL.createObjectURL(blob))
+        link.dispatchEvent(
+          new MouseEvent(`click`, {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+          })
+        )
+      })
+      event.preventDefault()
+    } else if (ctrl && key === 'd') {
+      let link = document.createElement('a')
+
+      let a = aref.current
+      let temp = document.createElement('canvas')
+      temp.width = a.width
+      temp.height = a.height
+
+      let tempx = temp.getContext('2d')
+      tempx.drawImage(a, 0, 0)
+      tempx.fillStyle = 'white'
+      tempx.fillRect(a.width - cw, a.height - ch, cw, ch)
+
+      console.log(temp.toDataURL())
+
+      // temp.toBlob(function(blob) {
+      //   link.setAttribute('download', 'font-test.png')
+      //   link.setAttribute('href', URL.createObjectURL(blob))
+      //   link.dispatchEvent(
+      //     new MouseEvent(`click`, {
+      //       bubbles: true,
+      //       cancelable: true,
+      //       view: window,
+      //     })
+      //   )
+      // })
+      event.preventDefault()
+    } else if (ctrl && key === 'f') {
+      let input = document.createElement('input')
+      input.setAttribute('type', 'file')
+      input.dispatchEvent(
+        new MouseEvent('click', {
+          bubbles: true,
+          cancelable: true,
+          view: window,
+        })
+      )
+      function handleChange(e) {
+        for (let item of this.files) {
+          if (item.type.indexOf('image') < 0) {
+            continue
+          }
+          let src = URL.createObjectURL(item)
+          loadImage(src)
+        }
+        this.removeEventListener('change', handleChange)
+      }
+      input.addEventListener('change', handleChange)
+      event.preventDefault()
+    }
 
     if (mode === 'text') {
       if (ctrl && key === 'h') {
@@ -650,8 +757,8 @@ const Home = () => {
         if (km['j'] || km['k']) {
           let layout = [...Array(acel_num)].map((n, i) => [
             i,
-            i % acol_num,
-            Math.floor(i / acol_num),
+            i % acols,
+            Math.floor(i / acols),
           ])
           let cell = layout[amark]
           if (km['k']) {
@@ -712,8 +819,8 @@ const Home = () => {
     let b = base_ref.current
     let bx = b.getContext('2d')
     let key = amark
-    let sprite_x = key % base_col
-    let sprite_y = Math.floor(key / base_col)
+    let sprite_x = key % acols
+    let sprite_y = Math.floor(key / acols)
     if (fill === 'white') {
       bx.clearRect(
         sprite_x * cw + moved[0],
@@ -864,30 +971,32 @@ const Home = () => {
         mode={mode}
       />
 
-      <div style={{ display: 'flex', marginTop: sch / 2 }}>
+      <div
+        style={{ display: 'flex', marginTop: sch / 2, marginBottom: sch / 2 }}
+      >
         <div
           style={{
             position: 'relative',
-            marginLeft: scw,
-            marginRight: scw,
+            marginRight: cw,
           }}
         >
           <canvas width={'font'.length * scw} height={sch} ref={flref} />
           <div style={{ position: 'relative' }}>
-            <canvas
-              style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-              }}
-              ref={amref}
-            />
             <canvas
               ref={aref}
               style={{
                 position: 'relative',
                 outline: mode === 'font' ? 'solid 1px black' : 'none',
               }}
+            />
+            <canvas
+              style={{
+                position: 'absolute',
+                mixBlendMode: 'difference',
+                left: 0,
+                top: 0,
+              }}
+              ref={amref}
             />
           </div>
         </div>
@@ -922,7 +1031,6 @@ const Home = () => {
       <div
         style={{
           position: 'relative',
-          marginLeft: scw,
           marginBottom: sch / 2,
         }}
       >
@@ -954,6 +1062,14 @@ const Home = () => {
           />
         </div>
       </div>
+
+      <Bottomstrip
+        cw={scw}
+        ch={sch}
+        base={ui_ref.current}
+        canvas_loaded={canvas_loaded}
+        mode={mode}
+      />
 
       <style global jsx>{`
         html {

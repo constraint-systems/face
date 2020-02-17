@@ -77,36 +77,21 @@ function textWriter(base, cx, cw, ch) {
   }
 }
 
-let char_active = [
-  { type: 'text', content: 'char mode ' },
-  { type: 'button', key: 'h', key_label: 'h', label: 'left' },
-  { type: 'button', key: 'j', key_label: 'j', label: 'down' },
-  { type: 'button', key: 'k', key_label: 'k', label: 'up' },
-  { type: 'button', key: 'l', key_label: 'l', label: 'right' },
-  { type: 'button', key: 'd', key_label: 'd', label: 'draw' },
-  { type: 'button', key: 'e', key_label: 'e', label: 'erase' },
+let default_active = [
+  { type: 'button', key: 'h', key_label: 'ctrl+1', label: 'size/2' },
+  {
+    type: 'button',
+    key: 'h',
+    key_label: 'ctrl+s',
+    label: 'save text as image',
+  },
+  { type: 'button', key: 'h', key_label: 'ctrl+f', label: 'save font' },
+  { type: 'button', key: 'h', key_label: 'ctrl+l', label: 'load font' },
 ]
-let text_active = [
-  { type: 'text', content: 'text mode ' },
-  { type: 'button', key: 'Escape', key_label: 'esc', label: 'edit font' },
-  { type: 'button', key: 'h', key_label: 'ctrl+h', label: 'columns-1' },
-  { type: 'button', key: 'h', key_label: 'ctrl+l', label: 'columns+1' },
-]
-let font_active = [
-  { type: 'text', content: 'font mode ' },
-  { type: 'button', key: 'h', key_label: 'h', label: 'left' },
-  { type: 'button', key: 'j', key_label: 'j', label: 'down' },
-  { type: 'button', key: 'k', key_label: 'k', label: 'up' },
-  { type: 'button', key: 'l', key_label: 'l', label: 'right' },
-  { type: 'button', key: 'Enter', key_label: 'enter', label: 'edit char' },
-  { type: 'button', key: 't', key_label: 't', label: 'edit text' },
-]
-
-let actives = { font: font_active, text: text_active, char: char_active }
 
 const Topstrip = ({ cw, ch, base, canvas_loaded, mode }) => {
   let cref = useRef(null)
-  let [active, setActive] = useState(font_active)
+  let [active, setActive] = useState(default_active)
 
   useEffect(() => {
     let c = cref.current
@@ -116,10 +101,6 @@ const Topstrip = ({ cw, ch, base, canvas_loaded, mode }) => {
 
     c.height = layout[layout.length - 1][2] * ch + ch
   }, [])
-
-  useEffect(() => {
-    setActive(actives[mode])
-  }, [mode])
 
   useEffect(() => {
     if (canvas_loaded) {
