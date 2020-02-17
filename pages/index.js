@@ -257,8 +257,8 @@ const Home = () => {
       cm.height = c.height
 
       let $base = document.createElement('canvas')
-      $base.width = acols * cw
-      $base.height = arows * ch
+      $base.width = acols * (cw / scale)
+      $base.height = arows * (ch / scale)
       let $basex = $base.getContext('2d')
       $basex.imageSmoothingEnabled = false
       let base_img = document.createElement('img')
@@ -390,9 +390,10 @@ const Home = () => {
   function drawAlphabet() {
     let a = aref.current
     let ax = a.getContext('2d')
+    ax.imageSmoothingEnabled = false
 
     ax.clearRect(0, 0, a.width, a.height)
-    ax.drawImage(base_ref.current, 0, 0)
+    ax.drawImage(base_ref.current, 0, 0, a.width, a.height)
   }
 
   function drawChar() {
@@ -401,7 +402,7 @@ const Home = () => {
 
     cmx.clearRect(0, 0, cm.width, cm.height)
     if (mode === 'char') {
-      cmx.fillStyle = 'green'
+      cmx.fillStyle = 'magenta'
       cmx.fillRect(
         cmark[0] * magnify,
         cmark[1] * magnify,
@@ -416,20 +417,6 @@ const Home = () => {
     cx.fillStyle = 'white'
     cx.fillRect(0, 0, c.width, c.height)
     cx.imageSmoothingEnabled = false
-
-    cx.strokeStyle = '#ddd'
-    if (mode === 'char') {
-      for (let r = 0; r < ch; r += scale) {
-        for (let c = 0; c < cw; c += scale) {
-          cx.strokeRect(
-            c * magnify,
-            r * magnify,
-            magnify * scale,
-            magnify * scale
-          )
-        }
-      }
-    }
 
     function getXY(i) {
       return [i % acols, Math.floor(i / acols)]
@@ -446,6 +433,20 @@ const Home = () => {
       cw * magnify,
       ch * magnify
     )
+
+    if (mode === 'char') {
+      cx.strokeStyle = '#ddd'
+      for (let r = 0; r < ch; r += scale) {
+        for (let c = 0; c < cw; c += scale) {
+          cx.strokeRect(
+            c * magnify,
+            r * magnify,
+            magnify * scale,
+            magnify * scale
+          )
+        }
+      }
+    }
   }
 
   function drawMarker() {
@@ -829,6 +830,7 @@ const Home = () => {
         scale
       )
     } else {
+      bx.fillStyle = 'black'
       bx.fillRect(
         sprite_x * cw + moved[0],
         sprite_y * ch + moved[1],
