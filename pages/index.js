@@ -10,6 +10,9 @@ import { base, base2, layoutText } from '../components/constants'
 import Topstrip from '../components/topstrip'
 import Bottomstrip from '../components/bottomstrip'
 
+let bcw = 8
+let bch = 16
+
 function getLast(text, index) {
   let char = text[index]
   if (char === undefined) {
@@ -31,6 +34,9 @@ function getLast(text, index) {
 }
 
 function tReducer(state, action) {
+  function mc(newtext, mark) {
+    return mark.map(v => Math.min(Math.max(0, v), newtext.length))
+  }
   switch (action.type) {
     case 'insert': {
       let newkey = action.payload
@@ -43,7 +49,7 @@ function tReducer(state, action) {
         text_string.slice(lasti)
       let text_layout = layoutText(action.col_num, new_string)
       let new_marker = [firsti + newkey.length, firsti + newkey.length]
-      return { text: text_layout, marker: new_marker }
+      return { text: text_layout, marker: mc(text_layout, new_marker) }
     }
     case 'backspace': {
       let text_string = state.text.map(o => o[0]).join('')
@@ -61,7 +67,7 @@ function tReducer(state, action) {
         new_marker = [firsti, firsti]
       }
       let text_layout = layoutText(action.col_num, new_string)
-      return { text: text_layout, marker: new_marker }
+      return { text: text_layout, marker: mc(text_layout, new_marker) }
     }
     case 'highlight': {
       let new_marker = state.marker
@@ -93,20 +99,23 @@ function tReducer(state, action) {
         }
       }
 
-      return { text: state.text, marker: new_marker }
+      return { text: state.text, marker: mc(state.text, new_marker) }
     }
     case 'set_marker': {
-      return { text: state.text, marker: action.payload }
+      return { text: state.text, marker: mc(state.text, action.payload) }
     }
     case 'set_end_marker': {
-      return { text: state.text, marker: [state.marker[0], action.payload] }
+      return {
+        text: state.text,
+        marker: mc(state.text, [state.marker[0], action.payload]),
+      }
     }
     case 'layout': {
       let text_layout = layoutText(
         action.col_num,
         state.text.map(o => o[0]).join('')
       )
-      return { text: text_layout, marker: state.marker }
+      return { text: text_layout, marker: mc(text_layout, state.marker) }
     }
     case 'move_marker':
       {
@@ -141,7 +150,7 @@ function tReducer(state, action) {
             }
           }
         }
-        return { text: state.text, marker: new_marker }
+        return { text: state.text, marker: mc(state.text, new_marker) }
       }
       defaut: throw new Error()
   }
@@ -153,7 +162,7 @@ Call me Ishmael. Some years ago—never mind how long precisely—having little 
 
 short_text = `You see people, and you're disconnected from them, they mean nothing to you, but other times you can invest everything in someone you don't even know, silently believe in them, it might be on the underground or in a shop or something. You hope people are doing that with you as well. Some people, even when they're quite young, and they're in difficulty, maybe taking a battering in their life, but they still handle themselves with grace. I hope most people can be like that, hold it together, I wanted this album to be for people in that situation.`
 
-short_text = `Face lets you edit both the text and the font it is rendered in. In text mode you can type and edit text normally. Press escape to enter font mode, where you can select a character to edit. After navigating to a character, press enter to edit the character itself. Any changes to a character are visible immediately. Use the controls listed at the bottom to change zoom level, save the text as an image, and save or load a font. The base font used is a subset of GNU Unifont.`
+short_text = `Face lets you edit both the text and the font it is rendered in. In text mode you can type and edit text normally. Press escape to enter font mode, where you can select a character to edit. After navigating to a character, press enter to edit the character itself. Any changes to a character are visible immediately. Use the controls listed at the bottom to change zoom level, save the text as an image, and save or load a font (a font is just a sprite sheet image). The base font used is a subset of GNU Unifont.`
 
 let initialt = {
   text: layoutText(50, short_text),
@@ -179,6 +188,7 @@ const Home = () => {
   let cmref = useRef(null)
 
   let [canvas_loaded, setCanvasLoaded] = useState(false)
+  let [ui_loaded, setUILoaded] = useState(false)
 
   let [scale, setScale] = useState(2)
   let [cw, setCw] = useState(8 * 2)
@@ -204,6 +214,10 @@ const Home = () => {
 
   let [refresh, setRefresh] = useState(0)
 
+  let [highlight, setHighlight] = useState(true)
+
+  let [loaded, setLoaded] = useState(base2)
+
   function loadImage(src) {
     let base = base_ref.current
     let basex = base.getContext('2d')
@@ -218,6 +232,7 @@ const Home = () => {
       drawChar()
     }
     base_img.src = src
+    setLoaded(src)
   }
 
   // init
@@ -268,67 +283,23 @@ const Home = () => {
         $basex.drawImage(base_img, 0, 0, $base.width, $base.height)
         base_ref.current = $base
 
+        setCanvasLoaded(true)
+      }
+      base_img.src = loaded
+
+      let ui_img = document.createElement('img')
+      ui_img.onload = () => {
         let $ui = document.createElement('canvas')
         $ui.width = (acols * cw) / scale
         $ui.height = (arows * ch) / scale
         let $uix = $ui.getContext('2d')
         $uix.imageSmoothingEnabled = false
-        $uix.drawImage(base_img, 0, 0, $ui.width, $ui.height)
+        $uix.drawImage(ui_img, 0, 0, $ui.width, $ui.height)
         ui_ref.current = $ui
 
-        function getXY(i) {
-          return [i % acols, Math.floor(i / acols)]
-        }
-
-        let fl = flref.current
-        let flx = fl.getContext('2d')
-        let fl_content = 'font'
-        flx.globalCompositeOperation = 'source-over'
-        flx.fillStyle = '#efefef'
-        flx.fillRect(0, 0, fl.width, fl.height)
-        flx.globalCompositeOperation = 'darken'
-        for (let i = 0; i < fl_content.length; i++) {
-          let key = fl_content.charCodeAt(i) - 32
-          if (key === -22) key = 94
-          let [sprite_x, sprite_y] = getXY(key)
-          flx.drawImage(
-            ui_ref.current,
-            sprite_x * (cw / scale),
-            sprite_y * (ch / scale),
-            cw / scale,
-            ch / scale,
-            i * (cw / scale),
-            0 * (ch / scale),
-            cw / scale,
-            ch / scale
-          )
-        }
-        let cl = clref.current
-        let clx = cl.getContext('2d')
-        let cl_content = 'char'
-        clx.globalCompositeOperation = 'source-over'
-        clx.fillStyle = '#efefef'
-        clx.fillRect(0, 0, fl.width, fl.height)
-        clx.globalCompositeOperation = 'darken'
-        for (let i = 0; i < cl_content.length; i++) {
-          let key = cl_content.charCodeAt(i) - 32
-          if (key === -22) key = 94
-          let [sprite_x, sprite_y] = getXY(key)
-          clx.drawImage(
-            ui_ref.current,
-            sprite_x * (cw / scale),
-            sprite_y * (ch / scale),
-            cw / scale,
-            ch / scale,
-            i * (cw / scale),
-            0 * (ch / scale),
-            cw / scale,
-            ch / scale
-          )
-        }
-        setCanvasLoaded(true)
+        setUILoaded(true)
       }
-      base_img.src = base2
+      ui_img.src = base2
     }
   }, [refresh])
 
@@ -353,7 +324,7 @@ const Home = () => {
       drawMarker()
       drawAlphabetMarker()
     }
-  }, [mode, tstate.text, tstate.marker, amark, col_num])
+  }, [mode, tstate.text, tstate.marker, amark, col_num, highlight])
 
   useEffect(() => {
     if (canvas_loaded) {
@@ -382,8 +353,61 @@ const Home = () => {
     let [x, y] = getXY(amark)
     amx.fillStyle = '#fff'
     amx.lineWidth = scale
+
+    let fl = flref.current
+    fl.width = 'font:-'.length * bcw
+    let flx = fl.getContext('2d')
+    let fl_content = 'font '
+    flx.globalCompositeOperation = 'source-over'
+    flx.fillStyle = '#efefef'
+    flx.fillRect(0, 0, fl.width, fl.height)
+    flx.globalCompositeOperation = 'darken'
+    for (let i = 0; i < fl_content.length; i++) {
+      let key = fl_content.charCodeAt(i) - 32
+      if (key === -22) key = 94
+      let [sprite_x, sprite_y] = getXY(key)
+      flx.drawImage(
+        ui_ref.current,
+        sprite_x * (cw / scale),
+        sprite_y * (ch / scale),
+        cw / scale,
+        ch / scale,
+        i * (cw / scale),
+        0 * (ch / scale),
+        cw / scale,
+        ch / scale
+      )
+    }
+
     if (mode === 'font') {
       amx.fillRect(x * cw, y * ch, cw, ch)
+      function getXY(i) {
+        return [i % acols, Math.floor(i / acols)]
+      }
+      let key = ':'.charCodeAt(0) - 32
+      let [sprite_x, sprite_y] = getXY(key)
+      flx.drawImage(
+        ui_ref.current,
+        sprite_x * bcw,
+        sprite_y * bch,
+        bcw,
+        bch,
+        (fl_content.length - 1) * bcw,
+        0 * bch,
+        bcw,
+        bch
+      )
+      flx.drawImage(
+        ui_ref.current,
+        x * bcw,
+        y * bch,
+        bcw,
+        bch,
+        fl_content.length * bcw,
+        0 * bch,
+        bcw,
+        bch
+      )
     }
   }
 
@@ -424,15 +448,43 @@ const Home = () => {
     let [sprite_x, sprite_y] = getXY(amark)
     cx.drawImage(
       base_ref.current,
-      sprite_x * cw,
-      sprite_y * ch,
-      cw,
-      ch,
+      sprite_x * bcw,
+      sprite_y * bch,
+      bcw,
+      bch,
       0,
       0,
       cw * magnify,
       ch * magnify
     )
+
+    function getXY(i) {
+      return [i % acols, Math.floor(i / acols)]
+    }
+    let cl = clref.current
+    cl.width = 'char:t'.length * bcw
+    let clx = cl.getContext('2d')
+    let cl_content = 'char '
+    clx.globalCompositeOperation = 'source-over'
+    clx.fillStyle = '#efefef'
+    clx.fillRect(0, 0, cl.width, cl.height)
+    clx.globalCompositeOperation = 'darken'
+    for (let i = 0; i < cl_content.length; i++) {
+      let key = cl_content.charCodeAt(i) - 32
+      if (key === -22) key = 94
+      let [sprite_x, sprite_y] = getXY(key)
+      clx.drawImage(
+        ui_ref.current,
+        sprite_x * (cw / scale),
+        sprite_y * (ch / scale),
+        cw / scale,
+        ch / scale,
+        i * (cw / scale),
+        0 * (ch / scale),
+        cw / scale,
+        ch / scale
+      )
+    }
 
     if (mode === 'char') {
       cx.strokeStyle = '#ddd'
@@ -446,6 +498,34 @@ const Home = () => {
           )
         }
       }
+
+      function getXY(i) {
+        return [i % acols, Math.floor(i / acols)]
+      }
+      let key = ':'.charCodeAt(0) - 32
+      let [a_x, a_y] = getXY(key)
+      clx.drawImage(
+        ui_ref.current,
+        a_x * bcw,
+        a_y * bch,
+        bcw,
+        bch,
+        (cl_content.length - 1) * bcw,
+        0 * bch,
+        bcw,
+        bch
+      )
+      clx.drawImage(
+        ui_ref.current,
+        sprite_x * bcw,
+        sprite_y * bch,
+        bcw,
+        bch,
+        cl_content.length * bcw,
+        0 * bch,
+        bcw,
+        bch
+      )
     }
   }
 
@@ -463,8 +543,16 @@ const Home = () => {
     m.height = char[2] * ch + ch + ch
     mx.clearRect(0, 0, m.width, m.height)
 
-    mx.fillStyle = 'white'
-    mx.fillRect(cw / 2, 0, m.width - cw, m.height)
+    if (mode != 'text' && highlight) {
+      for (let i = 0; i < tstate.text.length; i++) {
+        let char = tstate.text[i]
+        let akey = String.fromCharCode(amark + 32)
+        if (char[0] === akey) {
+          mx.fillStyle = '#222'
+          mx.fillRect(char[1] * cw + cw + cw / 2, char[2] * ch + ch / 2, cw, ch)
+        }
+      }
+    }
 
     if (mode === 'text') {
       function getXy(mark) {
@@ -477,7 +565,7 @@ const Home = () => {
       if (tstate.marker[0] === tstate.marker[1]) {
         // cursor
         let [x, y] = getXy(tstate.marker[0])
-        mx.fillStyle = 'red'
+        mx.fillStyle = 'green'
         mx.fillRect(
           x * cw + cw + cw / 2 - scale,
           y * ch + ch / 2,
@@ -490,7 +578,7 @@ const Home = () => {
         let lasti = Math.max(...tstate.marker)
         let [x0, y0] = getXy(firsti)
         let [x1, y1] = getXy(lasti)
-        mx.fillStyle = 'red'
+        mx.fillStyle = 'green'
         // same row
         if (y0 === y1) {
           mx.fillRect(
@@ -536,7 +624,10 @@ const Home = () => {
     let tx = t.getContext('2d')
     let text = tstate.text
 
-    let char = getLast(tstate.text, Math.max(...tstate.marker))
+    let char = getLast(
+      tstate.text,
+      Math.max(Math.max(...tstate.marker), tstate.text.length)
+    )
     t.width = cw * (col_num + 2)
     t.height = char[2] * ch + ch + ch
 
@@ -551,7 +642,7 @@ const Home = () => {
     tlx.fillStyle = '#efefef'
     tlx.fillRect(0, 0, tl.width, tl.height)
     tlx.globalCompositeOperation = 'darken'
-    let tl_content = 'text ' + col_num + 'x' + (char[2] + 1)
+    let tl_content = 'text:' + col_num + 'x' + (char[2] + 1)
     for (let i = 0; i < tl_content.length; i++) {
       let key = tl_content.charCodeAt(i) - 32
       if (key === -22) key = 94
@@ -569,7 +660,9 @@ const Home = () => {
       )
     }
 
-    tx.clearRect(0, 0, t.width, t.height)
+    tx.fillStyle = 'white'
+    tx.fillRect(0, 0, t.width, t.height)
+    tx.imageSmoothingEnabled = false
 
     for (let i = 0; i < text.length; i++) {
       let item = text[i]
@@ -581,16 +674,38 @@ const Home = () => {
       let sprite_y = Math.floor(key / acols)
       tx.drawImage(
         base_ref.current,
-        sprite_x * cw,
-        sprite_y * ch,
-        cw,
-        ch,
+        sprite_x * bcw,
+        sprite_y * bch,
+        bcw,
+        bch,
         x * cw + cw,
         y * ch + ch / 2,
         cw,
         ch
       )
     }
+  }
+
+  function keyTrigger(keystring) {
+    let shift = false
+    let ctrl = false
+    let meta = false
+
+    if (keystring.indexOf('ctrl') > -1) {
+      ctrl = true
+      keystring = keystring.split('+')[1]
+    }
+
+    km_ref.current[keystring] = true
+    keyAction(keystring, {
+      shiftKey: shift,
+      ctrlKey: ctrl,
+      meta: meta,
+      preventDefault: function() {},
+    })
+    setTimeout(() => {
+      km_ref.current[keystring] = false
+    }, 0)
   }
 
   function keyAction(key, event) {
@@ -648,19 +763,17 @@ const Home = () => {
       tempx.fillStyle = 'white'
       tempx.fillRect(a.width - cw, a.height - ch, cw, ch)
 
-      console.log(temp.toDataURL())
-
-      // temp.toBlob(function(blob) {
-      //   link.setAttribute('download', 'font-test.png')
-      //   link.setAttribute('href', URL.createObjectURL(blob))
-      //   link.dispatchEvent(
-      //     new MouseEvent(`click`, {
-      //       bubbles: true,
-      //       cancelable: true,
-      //       view: window,
-      //     })
-      //   )
-      // })
+      temp.toBlob(function(blob) {
+        link.setAttribute('download', 'font-test.png')
+        link.setAttribute('href', URL.createObjectURL(blob))
+        link.dispatchEvent(
+          new MouseEvent(`click`, {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+          })
+        )
+      })
       event.preventDefault()
     } else if (ctrl && key === 'f') {
       let input = document.createElement('input')
@@ -687,7 +800,9 @@ const Home = () => {
     }
 
     if (mode === 'text') {
-      if (ctrl && key === 'h') {
+      if (ctrl && key === 'a') {
+        tdispatch({ type: 'set_marker', payload: [0, tstate.text.length] })
+      } else if (ctrl && key === 'h') {
         let new_col = col_num - 1
         setColNum(new_col)
         tdispatch({ type: 'layout', col_num: new_col })
@@ -696,6 +811,11 @@ const Home = () => {
         let new_col = col_num + 1
         setColNum(new_col)
         tdispatch({ type: 'layout', col_num: new_col })
+        event.preventDefault()
+      }
+    } else {
+      if (ctrl && key == 'm') {
+        setHighlight(prev => !prev)
         event.preventDefault()
       }
     }
@@ -824,18 +944,18 @@ const Home = () => {
     let sprite_y = Math.floor(key / acols)
     if (fill === 'white') {
       bx.clearRect(
-        sprite_x * cw + moved[0],
-        sprite_y * ch + moved[1],
-        scale,
-        scale
+        sprite_x * bcw + moved[0] / scale,
+        sprite_y * bch + moved[1] / scale,
+        1,
+        1
       )
     } else {
       bx.fillStyle = 'black'
       bx.fillRect(
-        sprite_x * cw + moved[0],
-        sprite_y * ch + moved[1],
-        scale,
-        scale
+        sprite_x * bcw + moved[0] / scale,
+        sprite_y * bch + moved[1] / scale,
+        1,
+        1
       )
     }
 
@@ -962,15 +1082,17 @@ const Home = () => {
   return (
     <div>
       <Head>
-        <title>Faceoff</title>
+        <title>Face</title>
       </Head>
 
       <Topstrip
         cw={scw}
         ch={sch}
+        scale={scale}
         base={ui_ref.current}
-        canvas_loaded={canvas_loaded}
+        ui_loaded={ui_loaded}
         mode={mode}
+        keyTrigger={keyTrigger}
       />
 
       <div
@@ -1046,21 +1168,22 @@ const Home = () => {
         <div style={{ position: 'relative' }}>
           <canvas
             style={{
+              position: 'relative',
+              outline: mode === 'text' ? 'solid 1px black' : 'none',
+            }}
+            ref={tref}
+          />
+          <canvas
+            style={{
+              mixBlendMode: 'difference',
               position: 'absolute',
               left: -cw / 2,
               top: 0,
             }}
-            ref={mref}
-          />
-          <canvas
-            style={{
-              position: 'relative',
-              outline: mode === 'text' ? 'solid 1px black' : 'none',
-            }}
             onMouseDown={textDown}
             onMouseUp={textUp}
             onMouseMove={textMove}
-            ref={tref}
+            ref={mref}
           />
         </div>
       </div>
@@ -1069,8 +1192,11 @@ const Home = () => {
         cw={scw}
         ch={sch}
         base={ui_ref.current}
-        canvas_loaded={canvas_loaded}
+        scale={scale}
+        ui_loaded={ui_loaded}
+        highlight={highlight}
         mode={mode}
+        keyTrigger={keyTrigger}
       />
 
       <style global jsx>{`

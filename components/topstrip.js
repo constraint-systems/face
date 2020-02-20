@@ -7,6 +7,8 @@ import React, {
 } from 'react'
 
 let base_col = 12
+let bcw = 8
+let bch = 16
 
 function layoutText(items, c, cw, ch) {
   let cols = Math.floor(c.width / cw)
@@ -25,16 +27,26 @@ function layoutText(items, c, cw, ch) {
   }
 
   function layoutButton(button) {
-    let { key_label, label } = button
+    let { key_label, label, key } = button
     let full_length = key_label.length + 0 + label.length
     let next = x + full_length
     if (next > cols) {
       x = 0
       y += 1
     }
-    layout.push([key_label, x + 0.5, y, true])
+    layout.push([
+      key_label,
+      x + 0.5,
+      y,
+      true,
+      key,
+      x,
+      y,
+      x + key_label.length + 1,
+      y + 1,
+    ])
     x = x + key_label.length + 1
-    layout.push([label, x, y])
+    layout.push([label, x, y, false, key, x, y, x + label.length + 1, y + 1])
     x = x + label.length + 1
   }
 
@@ -78,22 +90,21 @@ function textWriter(base, cx, cw, ch) {
 }
 
 let char_active = [
-  { type: 'text', content: 'char mode ' },
+  { type: 'text', content: 'char mode:' },
   { type: 'button', key: 'h', key_label: 'h', label: 'left' },
   { type: 'button', key: 'j', key_label: 'j', label: 'down' },
   { type: 'button', key: 'k', key_label: 'k', label: 'up' },
   { type: 'button', key: 'l', key_label: 'l', label: 'right' },
   { type: 'button', key: 'd', key_label: 'd', label: 'draw' },
   { type: 'button', key: 'e', key_label: 'e', label: 'erase' },
+  { type: 'button', key: 'Escape', key_label: 'esc', label: 'edit font' },
 ]
 let text_active = [
-  { type: 'text', content: 'text mode ' },
+  { type: 'text', content: 'text mode:' },
   { type: 'button', key: 'Escape', key_label: 'esc', label: 'edit font' },
-  { type: 'button', key: 'h', key_label: 'ctrl+h', label: 'columns-1' },
-  { type: 'button', key: 'h', key_label: 'ctrl+l', label: 'columns+1' },
 ]
 let font_active = [
-  { type: 'text', content: 'font mode ' },
+  { type: 'text', content: 'font mode:' },
   { type: 'button', key: 'h', key_label: 'h', label: 'left' },
   { type: 'button', key: 'j', key_label: 'j', label: 'down' },
   { type: 'button', key: 'k', key_label: 'k', label: 'up' },
@@ -104,9 +115,10 @@ let font_active = [
 
 let actives = { font: font_active, text: text_active, char: char_active }
 
-const Topstrip = ({ cw, ch, base, canvas_loaded, mode }) => {
+const Topstrip = ({ cw, ch, base, ui_loaded, mode, keyTrigger }) => {
   let cref = useRef(null)
   let [active, setActive] = useState(font_active)
+  let layout_ref = useRef(null)
 
   useEffect(() => {
     let c = cref.current
@@ -122,7 +134,7 @@ const Topstrip = ({ cw, ch, base, canvas_loaded, mode }) => {
   }, [mode])
 
   useEffect(() => {
-    if (canvas_loaded) {
+    if (ui_loaded) {
       let c = cref.current
 
       let layout = layoutText(active, c, cw, ch)
@@ -137,8 +149,10 @@ const Topstrip = ({ cw, ch, base, canvas_loaded, mode }) => {
       // cx.fillRect(0, 0, c.width, c.height)
 
       let writeText = textWriter(base, cx, cw, ch)
+      layout_ref.current = []
       for (let item of layout) {
         let [text, x, y, clickable] = item
+        layout_ref.current.push(item)
         cx.fillStyle = '#222'
         if (clickable) {
           cx.fillRect(x * cw - cw / 2, y * ch, text.length * cw + cw, ch)
@@ -146,9 +160,24 @@ const Topstrip = ({ cw, ch, base, canvas_loaded, mode }) => {
         writeText(...item)
       }
     }
-  }, [canvas_loaded, active])
+  }, [ui_loaded, active])
 
-  return <canvas ref={cref} />
+  function checkClick(e) {
+    let groups = layout_ref.current
+    let filter = groups.filter(o => {
+      return (
+        o[5] * bcw <= e.clientX &&
+        o[6] * bch <= e.clientY &&
+        o[7] * bcw >= e.clientX &&
+        o[8] * bch >= e.clientY
+      )
+    })
+    if (filter.length > 0) {
+      keyTrigger(filter[0][4])
+    }
+  }
+
+  return <canvas onClick={checkClick} ref={cref} />
 }
 
 export default Topstrip
