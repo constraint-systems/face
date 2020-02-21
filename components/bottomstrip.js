@@ -64,7 +64,7 @@ function textWriter(base, cx, cw, ch) {
   return function writeText(text, x, y, invert) {
     cx.globalCompositeOperation = 'source-over'
     cx.fillStyle = '#efefef'
-    cx.fillRect(x * cw, 0, text.length * cw, ch)
+    cx.fillRect(x * cw, y * ch, text.length * cw, y * ch + ch)
     cx.globalCompositeOperation = 'darken'
     for (let i = x; i < x + text.length; i++) {
       let item = text[i - x]
@@ -99,8 +99,6 @@ let no_highlights = [
     key_label: 'ctrl+s',
     label: 'save text as image',
   },
-  { type: 'button', key: 'ctrl+d', key_label: 'ctrl+d', label: 'save font' },
-  { type: 'button', key: 'ctrl+f', key_label: 'ctrl+f', label: 'load font' },
 ]
 
 let with_highlights = [
@@ -111,14 +109,9 @@ let with_highlights = [
     label: 'highlights off',
   },
   { type: 'button', key: 'ctrl+1', key_label: 'ctrl+1', label: 'size/2' },
-  {
-    type: 'button',
-    key: 'ctrl+s',
-    key_label: 'ctrl+s',
-    label: 'save text as image',
-  },
   { type: 'button', key: 'ctrl+d', key_label: 'ctrl+d', label: 'save font' },
   { type: 'button', key: 'ctrl+f', key_label: 'ctrl+f', label: 'load font' },
+  { type: 'button', key: 'ctrl+g', key_label: 'ctrl+g', label: 'font gallery' },
 ]
 
 const Topstrip = ({

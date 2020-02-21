@@ -7,8 +7,8 @@ import React, {
 } from 'react'
 
 let base_col = 12
-let bcw = 8
-let bch = 16
+let cw = 8
+let ch = 16
 
 function layoutText(items, c, cw, ch) {
   let cols = Math.floor(c.width / cw)
@@ -89,64 +89,21 @@ function textWriter(base, cx, cw, ch) {
   }
 }
 
-let char_active = [
-  { type: 'text', content: 'char mode:' },
-  { type: 'button', key: 'h', key_label: 'h', label: 'left' },
-  { type: 'button', key: 'j', key_label: 'j', label: 'down' },
-  { type: 'button', key: 'k', key_label: 'k', label: 'up' },
-  { type: 'button', key: 'l', key_label: 'l', label: 'right' },
-  { type: 'button', key: 'd', key_label: 'd', label: 'draw' },
-  { type: 'button', key: 'e', key_label: 'e', label: 'erase' },
-  { type: 'button', key: 'Escape', key_label: 'esc', label: 'font mode' },
-]
-let text_active = [
-  { type: 'text', content: 'text mode:' },
-  { type: 'button', key: 'Escape', key_label: 'esc', label: 'font mode' },
-]
-let font_active = [
-  { type: 'text', content: 'font mode:' },
-  { type: 'button', key: 'h', key_label: 'h', label: 'left' },
-  { type: 'button', key: 'j', key_label: 'j', label: 'down' },
-  { type: 'button', key: 'k', key_label: 'k', label: 'up' },
-  { type: 'button', key: 'l', key_label: 'l', label: 'right' },
-  { type: 'button', key: 'Enter', key_label: 'enter', label: 'edit char' },
-  { type: 'button', key: 't', key_label: 't', label: 'text mode' },
-]
-
-let actives = { font: font_active, text: text_active, char: char_active }
-
-const Topstrip = ({ cw, ch, base, ui_loaded, mode, keyTrigger }) => {
+const Titlebutton = ({ base, content, ui_loaded, keyTrigger, max_width }) => {
   let cref = useRef(null)
-  let [active, setActive] = useState(font_active)
   let layout_ref = useRef(null)
-
-  useEffect(() => {
-    let c = cref.current
-    c.width = window.innerWidth
-
-    let layout = layoutText(active, c, cw, ch)
-
-    c.height = layout[layout.length - 1][2] * ch + ch
-  }, [])
-
-  useEffect(() => {
-    setActive(actives[mode])
-  }, [mode])
 
   useEffect(() => {
     if (ui_loaded) {
       let c = cref.current
+      c.width = max_width
 
-      let layout = layoutText(active, c, cw, ch)
+      let layout = layoutText(content, c, cw, ch)
 
       c.height = layout[layout.length - 1][2] * ch + ch
 
       let cx = c.getContext('2d')
       let cols = Math.floor(c.width / cw)
-
-      // cx.fillStyle = '#ddd'
-
-      // cx.fillRect(0, 0, c.width, c.height)
 
       let writeText = textWriter(base, cx, cw, ch)
       layout_ref.current = []
@@ -160,24 +117,9 @@ const Topstrip = ({ cw, ch, base, ui_loaded, mode, keyTrigger }) => {
         writeText(...item)
       }
     }
-  }, [ui_loaded, active])
+  }, [ui_loaded])
 
-  function checkClick(e) {
-    let groups = layout_ref.current
-    let filter = groups.filter(o => {
-      return (
-        o[5] * bcw <= e.clientX &&
-        o[6] * bch <= e.clientY &&
-        o[7] * bcw >= e.clientX &&
-        o[8] * bch >= e.clientY
-      )
-    })
-    if (filter.length > 0) {
-      keyTrigger(filter[0][4])
-    }
-  }
-
-  return <canvas onClick={checkClick} ref={cref} />
+  return <canvas ref={cref} />
 }
 
-export default Topstrip
+export default Titlebutton

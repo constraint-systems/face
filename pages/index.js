@@ -9,9 +9,12 @@ import Head from 'next/head'
 import { base, base2, layoutText } from '../components/constants'
 import Topstrip from '../components/topstrip'
 import Bottomstrip from '../components/bottomstrip'
+import Titlebutton from '../components/titlebutton'
 
 let bcw = 8
 let bch = 16
+
+let hotkey_labels = 'abcdefghijklmnopqrstuvwxyz0123456789'.split('')
 
 function getLast(text, index) {
   let char = text[index]
@@ -162,7 +165,11 @@ Call me Ishmael. Some years ago—never mind how long precisely—having little 
 
 short_text = `You see people, and you're disconnected from them, they mean nothing to you, but other times you can invest everything in someone you don't even know, silently believe in them, it might be on the underground or in a shop or something. You hope people are doing that with you as well. Some people, even when they're quite young, and they're in difficulty, maybe taking a battering in their life, but they still handle themselves with grace. I hope most people can be like that, hold it together, I wanted this album to be for people in that situation.`
 
-short_text = `Face lets you edit both the text and the font it is rendered in. In text mode you can type and edit text normally. Press escape to enter font mode, where you can select a character to edit. After navigating to a character, press enter to edit the character itself. Any changes to a character are visible immediately. Use the controls listed at the bottom to change zoom level, save the text as an image, and save or load a font (a font is just a sprite sheet image). The base font used is a subset of GNU Unifont.`
+short_text = `Face lets you edit both the text and the font it is rendered in. In text mode you can type and edit text normally. Press escape to enter font mode, where you can select a character to edit. Any changes to a character are visible immediately.
+
+Additional controls are shown at the bottom. You can change the text area and save it as an image in text mode. In font mode, you can save the font, load a font (fonts are just a sprite sheet image), or choose a font from the font gallery.
+
+The base font used is a subset of GNU Unifont.`
 
 let initialt = {
   text: layoutText(50, short_text),
@@ -218,6 +225,17 @@ const Home = () => {
 
   let [loaded, setLoaded] = useState(base2)
 
+  let [gallery_data, setGalleryData] = useState(null)
+  let [show_gallery, setShowGallery] = useState(false)
+
+  useEffect(() => {
+    fetch('/library.json')
+      .then(data => data.json())
+      .then(json => {
+        setGalleryData(json)
+      })
+  }, [])
+
   function loadImage(src) {
     let base = base_ref.current
     let basex = base.getContext('2d')
@@ -235,41 +253,45 @@ const Home = () => {
     setLoaded(src)
   }
 
+  function setSizes() {
+    // text
+    let t = tref.current
+    t.width = cw * (col_num + 2)
+    t.height = ch * (row_num + 1)
+
+    // text marker
+    let m = mref.current
+    m.width = cw * (col_num + 3)
+    m.height = ch * (row_num + 1)
+
+    // alphabet
+    let a = aref.current
+    a.width = cw * acols
+    a.height = ch * arows
+
+    // alphabet marker
+    let am = amref.current
+    am.width = cw * acols
+    am.height = ch * arows
+
+    // character
+    let c = cref.current
+    c.width = cw * magnify
+    c.height = ch * magnify
+
+    // character marker
+    let cm = cmref.current
+    cm.width = c.width
+    cm.height = c.height
+  }
+
   // init
   useEffect(() => {
     if (
       (cw === 8 && ch === 16 && scale === 1) ||
       (cw === 16 && ch === 32 && scale === 2)
     ) {
-      // text
-      let t = tref.current
-      t.width = cw * (col_num + 2)
-      t.height = ch * (row_num + 1)
-
-      // text marker
-      let m = mref.current
-      m.width = cw * (col_num + 3)
-      m.height = ch * (row_num + 1)
-
-      // alphabet
-      let a = aref.current
-      a.width = cw * acols
-      a.height = ch * arows
-
-      // alphabet marker
-      let am = amref.current
-      am.width = cw * acols
-      am.height = ch * arows
-
-      // character
-      let c = cref.current
-      c.width = cw * magnify
-      c.height = ch * magnify
-
-      // character marker
-      let cm = cmref.current
-      cm.width = c.width
-      cm.height = c.height
+      setSizes()
 
       let $base = document.createElement('canvas')
       $base.width = acols * (cw / scale)
@@ -301,12 +323,18 @@ const Home = () => {
       }
       ui_img.src = base2
     }
-  }, [refresh])
+  }, [])
 
   useEffect(() => {
-    setCanvasLoaded(false)
-    setRefresh(prev => prev + 1)
-  }, [cw, ch, scale])
+    if (canvas_loaded) {
+      setSizes()
+      drawMarker()
+      drawText()
+      drawAlphabet()
+      drawAlphabetMarker()
+      drawChar()
+    }
+  }, [cw, ch, scale, canvas_loaded])
 
   // init after canvas loaded
   useEffect(() => {
@@ -546,7 +574,12 @@ const Home = () => {
     if (mode != 'text' && highlight) {
       for (let i = 0; i < tstate.text.length; i++) {
         let char = tstate.text[i]
-        let akey = String.fromCharCode(amark + 32)
+        let akey
+        if (amark === 94) {
+          akey = String.fromCharCode(32 - 22)
+        } else {
+          akey = String.fromCharCode(amark + 32)
+        }
         if (char[0] === akey) {
           mx.fillStyle = '#222'
           mx.fillRect(char[1] * cw + cw + cw / 2, char[2] * ch + ch / 2, cw, ch)
@@ -715,6 +748,22 @@ const Home = () => {
     let ctrl = event.ctrlKey
     let meta = event.metaKey
 
+    if (show_gallery) {
+      if (key === 'Escape') {
+        setShowGallery(prev => !prev)
+      } else {
+        for (let i = 0; i < hotkey_labels.length; i++) {
+          let check_key = hotkey_labels[i]
+          if (key === check_key) {
+            let src = gallery_data[hotkey_labels.indexOf(key)]
+            setShowGallery(false)
+            loadImage('/font-library/' + src)
+          }
+        }
+      }
+      return
+    }
+
     if (ctrl && key == 1) {
       setScale(1)
       setCw(8)
@@ -739,7 +788,20 @@ const Home = () => {
       tempx.drawImage(t, 0, 0)
 
       temp.toBlob(function(blob) {
-        link.setAttribute('download', 'test.png')
+        link.setAttribute(
+          'download',
+          'face-text-' +
+            new Date()
+              .toISOString()
+              .slice(0, -4)
+              .replace(/-/g, '')
+              .replace(/:/g, '')
+              .replace(/_/g, '')
+              .replace(/\./g, '') +
+            'Z' +
+            '.png'
+        )
+
         link.setAttribute('href', URL.createObjectURL(blob))
         link.dispatchEvent(
           new MouseEvent(`click`, {
@@ -750,21 +812,38 @@ const Home = () => {
         )
       })
       event.preventDefault()
+    } else if (ctrl && key === 'g') {
+      setShowGallery(prev => !prev)
+      event.preventDefault()
     } else if (ctrl && key === 'd') {
+      // font download
       let link = document.createElement('a')
+
+      // always save font at 2x
 
       let a = aref.current
       let temp = document.createElement('canvas')
-      temp.width = a.width
-      temp.height = a.height
+      temp.width = bcw * acols * 2
+      temp.height = bch * arows * 2
 
       let tempx = temp.getContext('2d')
-      tempx.drawImage(a, 0, 0)
-      tempx.fillStyle = 'white'
-      tempx.fillRect(a.width - cw, a.height - ch, cw, ch)
+      tempx.imageSmoothingEnabled = false
+      tempx.drawImage(a, 0, 0, temp.width, temp.height)
 
       temp.toBlob(function(blob) {
-        link.setAttribute('download', 'font-test.png')
+        link.setAttribute(
+          'download',
+          'face-font-' +
+            new Date()
+              .toISOString()
+              .slice(0, -4)
+              .replace(/-/g, '')
+              .replace(/:/g, '')
+              .replace(/_/g, '')
+              .replace(/\./g, '') +
+            'Z' +
+            '.png'
+        )
         link.setAttribute('href', URL.createObjectURL(blob))
         link.dispatchEvent(
           new MouseEvent(`click`, {
@@ -943,7 +1022,8 @@ const Home = () => {
     let sprite_x = key % acols
     let sprite_y = Math.floor(key / acols)
     if (fill === 'white') {
-      bx.clearRect(
+      bx.fillStyle = 'white'
+      bx.fillRect(
         sprite_x * bcw + moved[0] / scale,
         sprite_y * bch + moved[1] / scale,
         1,
@@ -965,6 +1045,8 @@ const Home = () => {
   }
 
   function textDown(e) {
+    setMode('text')
+
     let rect = e.target.getBoundingClientRect()
     let rawx = e.clientX - rect.left - cw
     let rawy = e.clientY - rect.top
@@ -1074,7 +1156,7 @@ const Home = () => {
       window.removeEventListener('cut', cutHandler)
       window.removeEventListener('paste', pasteHandler)
     }
-  }, [mode, col_num, tstate, amark, cmark])
+  }, [mode, col_num, tstate, amark, cmark, show_gallery])
 
   let scw = cw / scale
   let sch = ch / scale
@@ -1105,7 +1187,12 @@ const Home = () => {
           }}
         >
           <canvas width={'font'.length * scw} height={sch} ref={flref} />
-          <div style={{ position: 'relative' }}>
+          <div
+            onMouseDown={() => {
+              setMode('font')
+            }}
+            style={{ position: 'relative' }}
+          >
             <canvas
               ref={aref}
               style={{
@@ -1155,7 +1242,7 @@ const Home = () => {
       <div
         style={{
           position: 'relative',
-          marginBottom: sch / 2,
+          marginBottom: sch * 2,
         }}
       >
         <div style={{ position: 'relative' }}>
@@ -1189,8 +1276,8 @@ const Home = () => {
       </div>
 
       <Bottomstrip
-        cw={scw}
-        ch={sch}
+        cw={bcw}
+        ch={bch}
         base={ui_ref.current}
         scale={scale}
         ui_loaded={ui_loaded}
@@ -1198,6 +1285,74 @@ const Home = () => {
         mode={mode}
         keyTrigger={keyTrigger}
       />
+
+      {show_gallery ? (
+        <div
+          style={{
+            position: 'fixed',
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+            overflow: 'auto',
+            background: 'rgba(220,220,220,0.8)',
+          }}
+        >
+          <div
+            style={{
+              background: '#efefef',
+              outline: 'solid 1px black',
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{ marginBottom: bch }}>
+              <Titlebutton
+                base={ui_ref.current}
+                ui_loaded={ui_loaded}
+                keyTrigger={keyTrigger}
+                max_width={window.innerWidth}
+                content={[
+                  {
+                    type: 'text',
+                    content: 'font gallery:',
+                  },
+                  {
+                    type: 'button',
+                    key: 'Escape',
+                    key_label: 'Esc',
+                    label: 'exit',
+                  },
+                ]}
+              />
+            </div>
+            {gallery_data.map((f, i) => (
+              <div
+                style={{
+                  float: 'left',
+                  marginRight: bcw * 2,
+                  marginBottom: bch,
+                }}
+              >
+                <img src={'/font-library/' + f} />
+                <Titlebutton
+                  base={ui_ref.current}
+                  ui_loaded={ui_loaded}
+                  keyTrigger={keyTrigger}
+                  max_width={acols * cw}
+                  content={[
+                    {
+                      type: 'button',
+                      key: hotkey_labels[i],
+                      key_label: hotkey_labels[i],
+                      label: f,
+                    },
+                  ]}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <style global jsx>{`
         html {
@@ -1210,7 +1365,6 @@ const Home = () => {
         }
         img {
           display: block;
-          outline: solid 1px black;
         }
       `}</style>
     </div>
