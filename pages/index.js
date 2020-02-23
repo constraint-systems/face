@@ -831,8 +831,8 @@ const Home = () => {
             })
           )
         })
+        event.preventDefault()
       }
-      event.preventDefault()
     } else {
       if (ctrl && key == 'm') {
         setHighlight(prev => !prev)
@@ -901,8 +901,6 @@ const Home = () => {
         input.addEventListener('change', handleChange)
         event.preventDefault()
       }
-
-      event.preventDefault()
     }
 
     // shift = true
