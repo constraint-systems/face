@@ -99,6 +99,12 @@ let no_highlights = [
     key_label: 'ctrl+s',
     label: 'save text as image',
   },
+  {
+    type: 'button',
+    key: 'ctrl+v',
+    key_label: 'ctrl+v',
+    label: 'view source',
+  },
 ]
 
 let with_highlights = [
@@ -112,6 +118,12 @@ let with_highlights = [
   { type: 'button', key: 'ctrl+d', key_label: 'ctrl+d', label: 'save font' },
   { type: 'button', key: 'ctrl+f', key_label: 'ctrl+f', label: 'load font' },
   { type: 'button', key: 'ctrl+g', key_label: 'ctrl+g', label: 'font gallery' },
+  {
+    type: 'button',
+    key: 'ctrl+v',
+    key_label: 'ctrl+v',
+    label: 'view source',
+  },
 ]
 
 const Topstrip = ({

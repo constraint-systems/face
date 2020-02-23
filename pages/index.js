@@ -748,6 +748,7 @@ const Home = () => {
     let ctrl = event.ctrlKey
     let meta = event.metaKey
 
+    // show gallery overrides everything else
     if (show_gallery) {
       if (key === 'Escape') {
         setShowGallery(prev => !prev)
@@ -764,6 +765,7 @@ const Home = () => {
       return
     }
 
+    // size change can be done in any mode
     if (ctrl && key == 1) {
       setScale(1)
       setCw(8)
@@ -774,107 +776,8 @@ const Home = () => {
       setCw(16)
       setCh(32)
       event.preventDefault()
-    } else if (ctrl && key === 's') {
-      let link = document.createElement('a')
-
-      let t = tref.current
-      let temp = document.createElement('canvas')
-      temp.width = t.width
-      temp.height = t.height
-
-      let tempx = temp.getContext('2d')
-      tempx.fillStyle = 'white'
-      tempx.fillRect(0, 0, t.width, t.height)
-      tempx.drawImage(t, 0, 0)
-
-      temp.toBlob(function(blob) {
-        link.setAttribute(
-          'download',
-          'face-text-' +
-            new Date()
-              .toISOString()
-              .slice(0, -4)
-              .replace(/-/g, '')
-              .replace(/:/g, '')
-              .replace(/_/g, '')
-              .replace(/\./g, '') +
-            'Z' +
-            '.png'
-        )
-
-        link.setAttribute('href', URL.createObjectURL(blob))
-        link.dispatchEvent(
-          new MouseEvent(`click`, {
-            bubbles: true,
-            cancelable: true,
-            view: window,
-          })
-        )
-      })
-      event.preventDefault()
-    } else if (ctrl && key === 'g') {
-      setShowGallery(prev => !prev)
-      event.preventDefault()
-    } else if (ctrl && key === 'd') {
-      // font download
-      let link = document.createElement('a')
-
-      // always save font at 2x
-
-      let a = aref.current
-      let temp = document.createElement('canvas')
-      temp.width = bcw * acols * 2
-      temp.height = bch * arows * 2
-
-      let tempx = temp.getContext('2d')
-      tempx.imageSmoothingEnabled = false
-      tempx.drawImage(a, 0, 0, temp.width, temp.height)
-
-      temp.toBlob(function(blob) {
-        link.setAttribute(
-          'download',
-          'face-font-' +
-            new Date()
-              .toISOString()
-              .slice(0, -4)
-              .replace(/-/g, '')
-              .replace(/:/g, '')
-              .replace(/_/g, '')
-              .replace(/\./g, '') +
-            'Z' +
-            '.png'
-        )
-        link.setAttribute('href', URL.createObjectURL(blob))
-        link.dispatchEvent(
-          new MouseEvent(`click`, {
-            bubbles: true,
-            cancelable: true,
-            view: window,
-          })
-        )
-      })
-      event.preventDefault()
-    } else if (ctrl && key === 'f') {
-      let input = document.createElement('input')
-      input.setAttribute('type', 'file')
-      input.dispatchEvent(
-        new MouseEvent('click', {
-          bubbles: true,
-          cancelable: true,
-          view: window,
-        })
-      )
-      function handleChange(e) {
-        for (let item of this.files) {
-          if (item.type.indexOf('image') < 0) {
-            continue
-          }
-          let src = URL.createObjectURL(item)
-          loadImage(src)
-        }
-        this.removeEventListener('change', handleChange)
-      }
-      input.addEventListener('change', handleChange)
+    } else if (ctrl && key == 'v') {
+      location.href = 'https://github.com/constraint-systems/face'
       event.preventDefault()
     }
 
@@ -891,12 +794,115 @@ const Home = () => {
         setColNum(new_col)
         tdispatch({ type: 'layout', col_num: new_col })
         event.preventDefault()
+      } else if (ctrl && key === 's') {
+        let link = document.createElement('a')
+
+        let t = tref.current
+        let temp = document.createElement('canvas')
+        temp.width = t.width
+        temp.height = t.height
+
+        let tempx = temp.getContext('2d')
+        tempx.fillStyle = 'white'
+        tempx.fillRect(0, 0, t.width, t.height)
+        tempx.drawImage(t, 0, 0)
+
+        temp.toBlob(function(blob) {
+          link.setAttribute(
+            'download',
+            'face-text-' +
+              new Date()
+                .toISOString()
+                .slice(0, -4)
+                .replace(/-/g, '')
+                .replace(/:/g, '')
+                .replace(/_/g, '')
+                .replace(/\./g, '') +
+              'Z' +
+              '.png'
+          )
+
+          link.setAttribute('href', URL.createObjectURL(blob))
+          link.dispatchEvent(
+            new MouseEvent(`click`, {
+              bubbles: true,
+              cancelable: true,
+              view: window,
+            })
+          )
+        })
       }
+      event.preventDefault()
     } else {
       if (ctrl && key == 'm') {
         setHighlight(prev => !prev)
         event.preventDefault()
+      } else if (ctrl && key === 'g') {
+        setShowGallery(prev => !prev)
+        event.preventDefault()
+      } else if (ctrl && key === 'd') {
+        // font download
+        let link = document.createElement('a')
+
+        // always save font at 2x
+
+        let a = aref.current
+        let temp = document.createElement('canvas')
+        temp.width = bcw * acols * 2
+        temp.height = bch * arows * 2
+
+        let tempx = temp.getContext('2d')
+        tempx.imageSmoothingEnabled = false
+        tempx.drawImage(a, 0, 0, temp.width, temp.height)
+
+        temp.toBlob(function(blob) {
+          link.setAttribute(
+            'download',
+            'face-font-' +
+              new Date()
+                .toISOString()
+                .slice(0, -4)
+                .replace(/-/g, '')
+                .replace(/:/g, '')
+                .replace(/_/g, '')
+                .replace(/\./g, '') +
+              'Z' +
+              '.png'
+          )
+          link.setAttribute('href', URL.createObjectURL(blob))
+          link.dispatchEvent(
+            new MouseEvent(`click`, {
+              bubbles: true,
+              cancelable: true,
+              view: window,
+            })
+          )
+        })
+      } else if (ctrl && key === 'f') {
+        let input = document.createElement('input')
+        input.setAttribute('type', 'file')
+        input.dispatchEvent(
+          new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+          })
+        )
+        function handleChange(e) {
+          for (let item of this.files) {
+            if (item.type.indexOf('image') < 0) {
+              continue
+            }
+            let src = URL.createObjectURL(item)
+            loadImage(src)
+          }
+          this.removeEventListener('change', handleChange)
+        }
+        input.addEventListener('change', handleChange)
+        event.preventDefault()
       }
+
+      event.preventDefault()
     }
 
     // shift = true
@@ -1161,10 +1167,31 @@ const Home = () => {
   let scw = cw / scale
   let sch = ch / scale
 
+  let title = 'Face'
+  let description =
+    'Face lets you edit both the text and the font it is rendered in.'
+
   return (
     <div>
       <Head>
+        <meta charset="UTF-8" />
         <title>Face</title>
+        <link rel="shortcut icon" href="/favicon.png" />
+        <meta
+          name="viewport"
+          content="width=device-width,initial-scale=1,shrink-to-fit=no"
+        />
+        <meta name="theme-color" content="#000000" />
+        <title>{title}</title>
+        <meta name="description" content={description} />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta
+          property="og:image"
+          content="https://face.constraint.systems/face.png"
+        />
+        <meta property="og:url" content="https://face.constraint.systems" />
+        <meta name="twitter:card" content="summary_large_image" />
       </Head>
 
       <Topstrip
