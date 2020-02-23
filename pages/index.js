@@ -172,7 +172,7 @@ Additional controls are shown at the bottom. You can change the text area and sa
 The base font used is a subset of GNU Unifont.`
 
 let initialt = {
-  text: layoutText(50, short_text),
+  text: layoutText(40, short_text),
   marker: [short_text.length, short_text.length],
 }
 
@@ -200,7 +200,7 @@ const Home = () => {
   let [scale, setScale] = useState(2)
   let [cw, setCw] = useState(8 * 2)
   let [ch, setCh] = useState(16 * 2)
-  let [col_num, setColNum] = useState(50)
+  let [col_num, setColNum] = useState(40)
   let [row_num, setRowNum] = useState(14)
 
   let [amark, setAmark] = useState(0)

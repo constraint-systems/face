@@ -8,28 +8,40 @@ export function layoutText(cols, text_string) {
     let words = []
     for (let i = 0; i < unbroke_words.length; i++) {
       let word = unbroke_words[i]
-      if (word.length < cols) {
-        words.push(word)
-      } else {
-        let broken = word.match(/.{1,cols}/g)
-        words.push(...broken)
-      }
+      words.push(word)
     }
     return words.map(w => w.split(''))
   })
   let i = 0
+  // lines broken up by intentional returns
   for (let l = 0; l < line_words.length; l++) {
     let line = line_words[l]
     for (let w = 0; w < line.length; w++) {
       let word = line[w]
-      if (x + word.length > cols) {
+      // if word doesn't fit on line move down one
+      if (x + word.length > cols && x !== 0) {
         x = 0
         y++
       }
-      for (let c = 0; c < word.length; c++) {
-        array.push([word[c], x, y, i])
-        x++
-        i++
+      if (word.length > cols) {
+        // break a word
+        let bc = 0
+        for (let c = 0; c < word.length; c++) {
+          if (bc % cols === 0 && bc !== 0) {
+            x = 0
+            y++
+          }
+          array.push([word[c], x, y, i])
+          bc++
+          x++
+          i++
+        }
+      } else {
+        for (let c = 0; c < word.length; c++) {
+          array.push([word[c], x, y, i])
+          x++
+          i++
+        }
       }
       if (w !== line.length - 1) {
         array.push([' ', x, y, i])
@@ -37,6 +49,7 @@ export function layoutText(cols, text_string) {
         i++
       }
     }
+    // line break
     if (l !== line_words.length - 1) {
       array.push(['\n', x, y, i])
       x = 0
