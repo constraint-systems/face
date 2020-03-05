@@ -948,24 +948,24 @@ const Home = () => {
         } else if (key === 't') {
           setMode('text')
         }
-        if (km['l']) {
+        if (km['l'] || km.ArrowRight) {
           let new_amark = amark + 1
           if (new_amark > acel_num - 1) new_amark = acel_num - 1
           setAmark(new_amark)
         }
-        if (km['h']) {
+        if (km['h'] || km.ArrowLeft) {
           let new_amark = amark - 1
           if (new_amark < 0) new_amark = 0
           setAmark(new_amark)
         }
-        if (km['j'] || km['k']) {
+        if (km['j'] || km['k'] || km.ArrowDown || km.ArrowUp) {
           let layout = [...Array(acel_num)].map((n, i) => [
             i,
             i % acols,
             Math.floor(i / acols),
           ])
           let cell = layout[amark]
-          if (km['k']) {
+          if (km['k'] || km.ArrowUp) {
             let next = cell[2] - 1
             if (next >= 0) {
               let up_row = layout.filter(c => c[2] === next)
@@ -974,7 +974,7 @@ const Home = () => {
               setAmark(new_amark[0])
             }
           }
-          if (km['j']) {
+          if (km['j'] || km.ArrowDown) {
             let next = cell[2] + 1
             if (next <= layout[layout.length - 1][2]) {
               let dn_row = layout.filter(c => c[2] === next)
@@ -989,16 +989,16 @@ const Home = () => {
           setMode('font')
         }
         let movement = [0, 0]
-        if (km.j) {
+        if (km.j || km.ArrowDown) {
           movement[1] += 1 * scale
         }
-        if (km.k) {
+        if (km.k || km.ArrowUp) {
           movement[1] -= 1 * scale
         }
-        if (km.h) {
+        if (km.h || km.ArrowLeft) {
           movement[0] -= 1 * scale
         }
-        if (km.l) {
+        if (km.l || km.ArrowRight) {
           movement[0] += 1 * scale
         }
 
